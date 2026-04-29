@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Taiwan Housing PIR Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; width: 100%; }
+        .info { padding: 6px 8px; background: white; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // 1. 初始化地圖，中心點設在台灣
+        var map = L.map('map').setView([23.6, 121.0], 7);
+
+        // 2. 加入 OpenStreetMap 底圖
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 3. 載入行政區 GeoJSON (這部分你需要準備自己的檔案)
+        fetch('taiwan_districts.json')
+            .then(res => res.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    style: function(feature) {
+                        return { color: "#ff7800", weight: 2, fillOpacity: 0.1 };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup("行政區: " + feature.properties.name);
+                    }
+                }).addTo(map);
+            });
+    </script>
+</body>
+</html>
