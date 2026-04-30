@@ -22,18 +22,58 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // 3. 載入行政區 GeoJSON (這部分你需要準備自己的檔案)
-        fetch('taiwan_districts.json')
+        // 3. 載入行政區 GeoJSON，並顯示中位數
+        function getColor(median) {
+            return median > 900 ? '#800026'
+                 : median > 700 ? '#BD0026'
+                 : median > 500 ? '#E31A1C'
+                 : median > 300 ? '#FC4E2A'
+                 : median > 100 ? '#FD8D3C'
+                 : median > 0   ? '#FEB24C'
+                               : '#CCCCCC';
+        }
+
+        function style(feature) {
+            var m = feature.properties.MEDIAN;
+            return {
+                fillColor: getColor(m),
+                weight: 1,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.7
+            };
+        }
+
+        function onEachFeature(feature, layer) {
+            var props = feature.properties || {};
+            var name = (props.COUNTYNAME || '') + (props.TOWNNAME || '') + (props.VILLNAME || '');
+            var median = props.MEDIAN !== undefined ? props.MEDIAN : '無資料';
+            layer.bindPopup('<strong>' + name + '</strong><br>中位數: ' + median);
+        }
+
+        fetch('taiwan_districts_with_median.json')
             .then(res => res.json())
             .then(data => {
                 L.geoJSON(data, {
-                    style: function(feature) {
-                        return { color: "#ff7800", weight: 2, fillOpacity: 0.1 };
-                    },
-                    onEachFeature: function(feature, layer) {
-                        layer.bindPopup("行政區: " + feature.properties.name);
-                    }
+                    style: style,
+                    onEachFeature: onEachFeature
                 }).addTo(map);
+
+                var legend = L.control({position: 'bottomright'});
+                legend.onAdd = function (map) {
+                    var div = L.DomUtil.create('div', 'info legend');
+                    var grades = [0, 100, 300, 500, 700, 900];
+                    var labels = [];
+                    div.innerHTML += '<strong>中位數</strong><br>';
+                    for (var i = 0; i < grades.length; i++) {
+                        div.innerHTML +=
+                            '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+                            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+                    }
+                    return div;
+                };
+                legend.addTo(map);
             });
     </script>
 </body>
