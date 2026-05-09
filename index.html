@@ -22,21 +22,20 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // 3. 載入行政區 GeoJSON，並顯示中位數
-        function getColor(median) {
-            return median > 900 ? '#800026'
-                 : median > 700 ? '#BD0026'
-                 : median > 500 ? '#E31A1C'
-                 : median > 300 ? '#FC4E2A'
-                 : median > 100 ? '#FD8D3C'
-                 : median > 0   ? '#FEB24C'
-                               : '#CCCCCC';
+        // 3. 載入行政區 GeoJSON，並顯示房價中位數、薪資中位數和負擔能力
+        function getColor(affordability) {
+            return affordability > 40 ? '#800026'
+                 : affordability > 30 ? '#BD0026'
+                 : affordability > 20 ? '#E31A1C'
+                 : affordability > 10 ? '#FC4E2A'
+                 : affordability > 0   ? '#FD8D3C'
+                                       : '#CCCCCC';
         }
 
         function style(feature) {
-            var m = feature.properties.MEDIAN;
+            var a = feature.properties.affordability;
             return {
-                fillColor: getColor(m),
+                fillColor: getColor(a),
                 weight: 1,
                 opacity: 1,
                 color: 'white',
@@ -48,11 +47,13 @@
         function onEachFeature(feature, layer) {
             var props = feature.properties || {};
             var name = (props.COUNTYNAME || '') + (props.TOWNNAME || '') + (props.VILLNAME || '');
-            var median = props.MEDIAN !== undefined ? props.MEDIAN : '無資料';
-            layer.bindPopup('<strong>' + name + '</strong><br>中位數: ' + median);
+            var housingMedian = props.housing_median !== undefined ? props.housing_median : '無資料';
+            var salaryMedian = props.MEDIAN !== undefined ? props.MEDIAN : '無資料';
+            var affordability = props.affordability !== undefined ? props.affordability.toFixed(2) : '無資料';
+            layer.bindPopup('<strong>' + name + '</strong><br>房價中位數: ' + housingMedian + '<br>薪資中位數: ' + salaryMedian + '<br>房價負擔能力: ' + affordability);
         }
 
-        fetch('taiwan_districts_with_median.json')
+        fetch('taiwan_districts_with_median_extended.json')
             .then(res => res.json())
             .then(data => {
                 L.geoJSON(data, {
@@ -63,9 +64,9 @@
                 var legend = L.control({position: 'bottomright'});
                 legend.onAdd = function (map) {
                     var div = L.DomUtil.create('div', 'info legend');
-                    var grades = [0, 100, 300, 500, 700, 900];
+                    var grades = [0, 10, 20, 30, 40];
                     var labels = [];
-                    div.innerHTML += '<strong>中位數</strong><br>';
+                    div.innerHTML += '<strong>房價負擔能力</strong><br>';
                     for (var i = 0; i < grades.length; i++) {
                         div.innerHTML +=
                             '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
