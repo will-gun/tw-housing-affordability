@@ -53,7 +53,7 @@
             layer.bindPopup('<strong>' + name + '</strong><br>房價中位數: ' + housingMedian + '<br>薪資中位數: ' + salaryMedian + '<br>房價負擔能力: ' + affordability);
         }
 
-        fetch('taiwan_districts_with_median_extended.json')
+        fetch('taiwan_districts_simple_extended.json')
             .then(res => res.json())
             .then(data => {
                 L.geoJSON(data, {

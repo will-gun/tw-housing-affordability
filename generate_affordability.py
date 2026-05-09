@@ -3,16 +3,41 @@ import csv
 from collections import defaultdict
 import statistics
 
-# Load the districts JSON
-with open('/home/will/housing/taiwan_districts_with_median.json', 'r', encoding='utf-8') as f:
-    districts_data = json.load(f)
+def parse_region_key_from_salary_row(row):
+    area = row['縣市別'].strip()
+    village = row['村里'].strip()
+    if not area or not village:
+        return None
+    # Extract county/city and township/district from the combined field
+    import re
+    match = re.match(r'^(.+?[市縣])(.+)$', area)
+    if not match:
+        return None
+    county = match.group(1)
+    town = match.group(2)
+    return f"{county}:{town}:{village}"
 
-# Extract salary medians by region
+# Load salary medians from the original CSV
 salary_medians = {}
-for feature in districts_data['features']:
-    props = feature['properties']
-    region_key = f"{props['COUNTYNAME']}:{props['TOWNNAME']}:{props['VILLNAME']}"
-    salary_medians[region_key] = props.get('MEDIAN', 0)
+with open('/home/will/housing/111_165-9.csv', 'r', encoding='utf-8-sig') as f:
+    reader = csv.DictReader(f)
+    if reader.fieldnames:
+        reader.fieldnames = [name.strip('\ufeff').strip() for name in reader.fieldnames]
+    for row in reader:
+        region_key = parse_region_key_from_salary_row(row)
+        if not region_key:
+            continue
+        village_median = row.get('中位數', '').strip()
+        if village_median in ('', '合計', '其他'):
+            continue
+        try:
+            salary_medians[region_key] = float(village_median)
+        except ValueError:
+            continue
+
+# Load the smaller simple GeoJSON and extend it
+with open('/home/will/housing/taiwan_districts_simple.json', 'r', encoding='utf-8') as f:
+    districts_data = json.load(f)
 
 # Load housing prices CSV and group by region
 housing_prices = defaultdict(list)
@@ -34,21 +59,22 @@ for region, prices in housing_prices.items():
     else:
         median_prices[region] = 0
 
-# Build the output data by extending the original GeoJSON
+# Extend the simple GeoJSON with housing median, salary median and affordability
 for feature in districts_data['features']:
     props = feature['properties']
     region_key = f"{props['COUNTYNAME']}:{props['TOWNNAME']}:{props['VILLNAME']}"
-    salary_median = props.get('MEDIAN', 0)
+    salary_median = props.get('MEDIAN', salary_medians.get(region_key, 0))
     housing_median = median_prices.get(region_key, 0)
     if salary_median > 0:
         affordability = housing_median / 1000 / salary_median
     else:
         affordability = 0
+    props['MEDIAN'] = salary_median
     props['housing_median'] = housing_median
     props['affordability'] = affordability
 
-# Save the extended JSON
-with open('/home/will/housing/taiwan_districts_with_median_extended.json', 'w', encoding='utf-8') as f:
+# Save the extended simple GeoJSON
+with open('/home/will/housing/taiwan_districts_simple_extended.json', 'w', encoding='utf-8') as f:
     json.dump(districts_data, f, ensure_ascii=False, indent=4)
 
 print("Done!")
